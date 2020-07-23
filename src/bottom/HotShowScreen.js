@@ -19,13 +19,11 @@ import CardView from '../utils/CardView';
 import {Rating, Button} from 'react-native-elements';
 import SmartRefresh from '../utils/SmartRefresh';
 
+// https://api.douban.com/v2/movie/subject/30282387?apikey=0df993c66c0c636e29ecbb5344252a4a
 
 /**
  * 热映
  */
-
-const url = "https://api.douban.com/v2/movie/in_theaters";
-const params={apikey: '0df993c66c0c636e29ecbb5344252a4a', city: '北京', start: '0', count: '100'};
 
 export default class HotShowScreen extends Component {
 
@@ -33,29 +31,39 @@ export default class HotShowScreen extends Component {
         super(props);
 
         this.state = {
-            productData: [],
             prArrowDeg: new Animated.Value(0),
         };
         this.base64Icon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAABQBAMAAAD8TNiNAAAAJ1BMVEUAAACqqqplZWVnZ2doaGhqampoaGhpaWlnZ2dmZmZlZWVmZmZnZ2duD78kAAAADHRSTlMAA6CYqZOlnI+Kg/B86E+1AAAAhklEQVQ4y+2LvQ3CQAxGLSHEBSg8AAX0jECTnhFosgcjZKr8StE3VHz5EkeRMkF0rzk/P58k9rgOW78j+TE99OoeKpEbCvcPVDJ0OvsJ9bQs6Jxs26h5HCrlr9w8vi8zHphfmI0fcvO/ZXJG8wDzcvDFO2Y/AJj9ADE7gXmlxFMIyVpJ7DECzC9J2EC2ECAAAAAASUVORK5CYII=';
 
         // 在ES6中，如果在自定义的函数里使用了this关键字，则需要对其进行“绑定”操作，否则this的指向会变为空
         // 像下面这行代码一样，在constructor中使用bind是其中一种做法（还有一些其他做法，如使用箭头函数等）
-     //   this.onFetch = this.onFetch.bind(this);
+        //   this.onFetch = this.onFetch.bind(this);
     }
 
-
-    componentDidMount() {
-      //  this.onFetch(URL, {apikey: '0df993c66c0c636e29ecbb5344252a4a', city: '北京', start: '0', count: '100'});
+    /**
+     *  fetch data
+     * @param page
+     * @param pageSize
+     * @param callback
+     * @returns {Promise<void>}
+     */
+    async onFetch(page, pageSize, callback) {
+        // do something for fetch data
+        await this.fetch(Number(page) * Number(pageSize), pageSize).then((response) => {
+            !response ? callback('', '', true) : callback(response.subjects, response.total)
+        });
     }
 
 
     /**
      * 获取电影列表
-     * @param url
-     * @param params
+     * @param page
+     * @param pageSize
      * @private
      */
-    async onFetch(page, pageSize, callback) {
+    fetch(page, pageSize) {
+        let url = "https://api.douban.com/v2/movie/in_theaters";
+        const params = {apikey: '0df993c66c0c636e29ecbb5344252a4a', city: '北京', start: page, count: pageSize};
 
         // 组装参数
         if (params) {
@@ -69,19 +77,24 @@ export default class HotShowScreen extends Component {
             }
         }
 
-        fetch(url)
+        console.log(url);
+
+        return fetch(url)
             .then((response => response.json()))
             .then(responseData => {
-                this.setState({
-                    productData: this.state.productData.concat(responseData.subjects)
-                })
+                return responseData;
             }).catch((err) => {
 
-        })
+            })
 
     }
 
-     renderMovieData({item}) {
+    /**
+     * 加载数据
+     * @param item
+     * @returns {*}
+     */
+    renderMovieData({item}) {
         // 主演
         let mainCast = item.casts.map(cast => cast.name).join(' / ');
         // 观看人数
@@ -94,82 +107,83 @@ export default class HotShowScreen extends Component {
         }
 
         return (
-            <View style={styles.container}>
+            <TouchableOpacity onPress={() => this._onItemPress(item.id)}>
+                <View style={styles.container}>
+                    <CardView style={styles.cardStyle}>
+                        <View style={styles.movieContainer}>
+                            <Image style={styles.productImage}
+                                   source={{uri: item.images.medium}}/>
+                            <View style={styles.movieContentContainer}>
+                                <View style={styles.contentLeft}>
+                                    <Text style={styles.movieTitle}>{item.title}</Text>
+                                    <Rating
+                                        style={{marginTop: 10}}
+                                        imageSize={15}
+                                        readonly
+                                        fractions={1}
+                                        startingValue={item.rating.average / 2}
+                                        ratingCount={5}/>
+                                    <Text style={{marginTop: 10, fontSize: 11}}>导演： {item.directors[0].name}</Text>
+                                    <Text style={{marginTop: 10, fontSize: 11}}>主演： {mainCast}</Text>
+                                </View>
 
-                <CardView style={styles.cardStyle}>
-                    <View style={styles.movieContainer}>
-                        <Image style={styles.productImage}
-                               source={{uri: item.images.medium}}/>
+                                <View style={styles.contentRight}>
+                                    <Text style={{fontSize: 9}}>{total_count}人看过</Text>
+                                    <Button
+                                        buttonStyle={{
+                                            marginTop: 15,
+                                            width: 55,
+                                            height: 30,
+                                            borderColor: 'red',
+                                            borderWidth: 0.3,
 
-                        <View style={styles.movieContentContainer}>
-                            <View style={styles.contentLeft}>
-                                <Text style={styles.movieTitle}>{item.title}</Text>
-                                <Rating
-                                    style={{marginTop: 10}}
-                                    imageSize={15}
-                                    readonly
-                                    fractions={1}
-                                    startingValue={item.rating.average / 2}
-                                    ratingCount={5}/>
-                                <Text style={{marginTop: 10, fontSize: 11}}>导演： {item.directors[0].name}</Text>
-                                <Text style={{marginTop: 10, fontSize: 11}}>主演： {mainCast}</Text>
+                                        }}
+
+                                        title={'购票'}
+                                        titleStyle={{fontSize: 12, color: 'red'}}
+                                        type='outline'
+                                        onPress={() => Alert.alert('购票', null, null)}/>
+                                </View>
                             </View>
-
-                            <View style={styles.contentRight}>
-                                <Text style={{fontSize: 9}}>{total_count}人看过</Text>
-                                <Button
-                                    buttonStyle={{
-                                        marginTop: 15,
-                                        width: 50,
-                                        height: 25,
-                                        borderColor: 'red',
-                                        borderWidth: 1
-                                    }}
-                                    title={'购票'}
-                                    titleStyle={{fontSize: 12, color: 'red'}}
-                                    type='outline'
-                                    onPress={() => Alert.alert('购票', null, null)}/>
-                            </View>
-
-
                         </View>
-
-                    </View>
-                </CardView>
-
-            </View>
+                    </CardView>
+                </View>
+            </TouchableOpacity>
 
 
         );
     }
 
+    _onItemPress(id) {
+       this.props.navigation.navigate('MovieDetail',{movieId:id})
+    }
+
+    /**
+     * 上拉加载样式
+     * @returns {{footerLoading: (function(): *), loadingNoMore: (function(): *), loadingMore: (function(*): *), noDataView: (function(*): *), errorView: (function(*): *), loading: (function(): *)}}
+     */
     footerView() {
-        let footerLoading = () => (<View style={styles.footer}><ActivityIndicator animating={true} size="small" /><View style={{ marginLeft: 20 }}><Text style={{ textAlign: 'center' }}>正在加载中...</Text></View></View>);
-        let loadingNoMore = () => <View style={styles.footer}><Text style={{ textAlign: 'center' }}>已经到底了</Text></View>;
+        let footerLoading = () => (<View style={styles.footer}><ActivityIndicator animating={true} size="small"/><View
+            style={{marginLeft: 20}}><Text style={{textAlign: 'center'}}>正在加载中...</Text></View></View>);
+        let loadingNoMore = () => <View style={styles.footer}><Text style={{textAlign: 'center'}}>已经到底了</Text></View>;
         let loadingMore = (_getMore) =>
-            <TouchableOpacity style={styles.footer} onPress={() => _getMore()} >
-                <Text style={{ textAlign: 'center' }}>加载更多</Text>
-        </TouchableOpacity> ;
+            <TouchableOpacity style={styles.footer} onPress={() => _getMore()}>
+                <Text style={{textAlign: 'center'}}>加载更多</Text>
+            </TouchableOpacity>;
 
         let noDataView = (_rePostFetch) => <View>
-            <Text style={{ textAlign: 'center' }}>没有数据</Text>
-            <TouchableOpacity
-
-                onPress={() => _rePostFetch()}
-            >
-                <Text style={{ color: '#333', textAlign: 'center' }}>点击立即刷新</Text>
+            <Text style={{textAlign: 'center'}}>没有数据</Text>
+            <TouchableOpacity onPress={() => _rePostFetch()}>
+                <Text style={{color: '#333', textAlign: 'center'}}>点击立即刷新</Text>
             </TouchableOpacity>
         </View>;
         let errorView = (_rePostFetch) => <View>
-            <Text style={{ textAlign: 'center' }}>网络请求失败</Text>
-            <TouchableOpacity
-
-                onPress={() => _rePostFetch()}
-            >
-                <Text style={{ color: '#333', textAlign: 'center' }}>点击立即刷新</Text>
+            <Text style={{textAlign: 'center'}}>网络请求失败</Text>
+            <TouchableOpacity onPress={() => _rePostFetch()}>
+                <Text style={{color: '#333', textAlign: 'center'}}>点击立即刷新</Text>
             </TouchableOpacity>
         </View>;
-        let loading = () => <Text style={{ textAlign: 'center' }}>正在加载中。。。</Text>;
+        let loading = () => <Text style={{textAlign: 'center'}}>正在加载中。。。</Text>;
         return {
             footerLoading,
             loadingNoMore,
@@ -180,12 +194,21 @@ export default class HotShowScreen extends Component {
         }
     }
 
+    /**
+     * 自定义刷新，下拉样式
+     * @param pulling
+     * @param pullok
+     * @param pullrelease
+     * @param pullSuccess
+     * @param gesturePosition
+     * @returns {*}
+     */
     defaultTopIndicatorRender = (pulling, pullok, pullrelease, pullSuccess, gesturePosition) => {
         // console.log(pulling, pullok, pullrelease, pullSuccess, gesturePosition)
         this.transform = [{
             rotate: this.state.prArrowDeg.interpolate({
                 inputRange: [0, 1],
-                outputRange: ['0deg', '-100deg']
+                outputRange: ['0deg', '-180deg']
             })
         }];
         if (pulling) {
@@ -203,26 +226,34 @@ export default class HotShowScreen extends Component {
         }
         return (
             <View style={[styles.headWrap]}>
-                <View ref={(c) => { this.txtPulling = c; }} style={pulling ? styles.show : styles.hide}>
-                    <Animated.Image style={[styles.arrow, { transform: this.transform }]}
+                <View ref={(c) => {
+                    this.txtPulling = c;
+                }} style={pulling ? styles.show : styles.hide}>
+                    <Animated.Image style={[styles.arrow, {transform: this.transform}]}
                                     resizeMode={'contain'}
-                                    source={{ uri: this.base64Icon }} />
+                                    source={{uri: this.base64Icon}}/>
                     <Text style={styles.arrowText}>{"下拉可以刷新"}</Text>
                 </View>
 
-                <View ref={(c) => { this.txtPullok = c; }} style={pullok ? styles.show : styles.hide}>
+                <View ref={(c) => {
+                    this.txtPullok = c;
+                }} style={pullok ? styles.show : styles.hide}>
 
-                    <Animated.Image style={[styles.arrow, { transform: this.transform }]}
+                    <Animated.Image style={[styles.arrow, {transform: this.transform}]}
                                     resizeMode={'contain'}
-                                    source={{ uri: this.base64Icon }} />
+                                    source={{uri: this.base64Icon}}/>
                     <Text style={styles.arrowText}>{"释放立即刷新"}</Text>
                 </View>
 
-                <View ref={(c) => { this.txtPullrelease = c; }} style={pullrelease ? styles.show : styles.hide}>
-                    <ActivityIndicator size="small" color="gray" style={styles.arrow} />
+                <View ref={(c) => {
+                    this.txtPullrelease = c;
+                }} style={pullrelease ? styles.show : styles.hide}>
+                    <ActivityIndicator size="small" color="gray" style={styles.arrow}/>
                     <Text style={styles.arrowText}>{"刷新数据中..."}</Text>
                 </View>
-                <View ref={(c) => { this.txtPullSuccess = c; }} style={pullSuccess ? styles.show : styles.hide}>
+                <View ref={(c) => {
+                    this.txtPullSuccess = c;
+                }} style={pullSuccess ? styles.show : styles.hide}>
                     <Text style={styles.arrowText}>{"刷新成功.."}</Text>
                 </View>
 
@@ -233,20 +264,18 @@ export default class HotShowScreen extends Component {
 
 
     render() {
-
-
         return (
             <View style={styles.container}>
                 <SmartRefresh
-                    topBackgroundColor={'#fccb57'}
+                    topBackgroundColor={'#ffffff'}
                     initialNumToRender={7}
-                    renderItem={this.renderMovieData}
-                    initialPage={1}
+                    renderItem={this.renderMovieData.bind(this)}
+                    initialPage={0}
                     pageSize={10}
                     AsycConnectedChange={'connectionChange'}
                     onFetch={this.onFetch.bind(this)}
                     topIndicatorRender={this.defaultTopIndicatorRender}
-                    {...this.footerView() }
+                    {...this.footerView()}
                 />
 
             </View>
@@ -316,7 +345,7 @@ const styles = StyleSheet.create({
     headWrap: {
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#eca02a',
+        backgroundColor: '#ffffff',
         height: 100,
     },
     arrow: {

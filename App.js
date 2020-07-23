@@ -10,6 +10,7 @@ import React, {Component} from 'react';
 import {Platform, StyleSheet, Text, View} from 'react-native';
 import {createStackNavigator, createAppContainer} from 'react-navigation'
 import {MainTab} from "./src/MainTab";
+import MovieDetailScreen from "./src/MovieDetailScreen";
 
 const AppNavigator = createStackNavigator(
     {
@@ -18,6 +19,12 @@ const AppNavigator = createStackNavigator(
             navigationOptions: {
                 header: null,
             },
+        },
+        MovieDetail:{
+            screen: MovieDetailScreen,
+          //  navigationOptions: {
+               // header:null
+          //  }
         },
     }
 );
